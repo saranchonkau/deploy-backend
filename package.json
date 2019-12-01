@@ -1,0 +1,43 @@
+{
+  "name": "deploy-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "babel -d build --extensions \".ts\" src",
+    "start": "yarn build && node build/index.js"
+  },
+  "keywords": [],
+  "author": {
+    "name": "Ivan Saranchonkau",
+    "email": "i.saranchonkau@ozitag.com",
+  },
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^8.2.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.7.4",
+    "@babel/core": "^7.7.4",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.7.4",
+    "@babel/preset-env": "^7.7.4",
+    "@babel/preset-typescript": "^7.7.4",
+    "@types/dotenv": "^8.2.0",
+    "@types/node": "^12.12.14",
+    "husky": "^3.1.0",
+    "lint-staged": "^9.5.0",
+    "prettier": "^1.19.1",
+    "typescript": "^3.7.2"
+  },
+  "lint-staged": {
+    "src/**/*.{ts}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  }
+}
