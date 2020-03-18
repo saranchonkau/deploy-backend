@@ -10,6 +10,12 @@ dotenv.config({
   path: path.resolve(__dirname, '../.env'),
 });
 
+const PATH_TO_SCRIPT_FOLDER = process.env.SCRIPT_PATH;
+
+if (!PATH_TO_SCRIPT_FOLDER) {
+  throw new Error('Env variable "SCRIPT_PATH" is not specified');
+}
+
 /**
  * Custom Node.js Error
  * Source: https://gist.github.com/slavafomin/b164e3e710a6fc9352c934b9073e7216
@@ -38,48 +44,49 @@ class ApplicationError extends Error {
  * Check if script is exists and it is executable.
  * Return path to file on success or throw error otherwise
  */
-function checkScriptExists(scriptName: string): Promise<string | never> {
-  if (!process.env.SCRIPT_PATH) {
-    throw new ApplicationError(
-      'Env variable "SCRIPT_PATH" is not specified',
-      500,
-    );
-  }
-
-  const pathToFile = path.resolve(process.env.SCRIPT_PATH, scriptName);
+function checkScriptExists(pathToScript: string): Promise<string | never> {
   return new Promise((resolve, reject) => {
-    fs.access(pathToFile, fs.constants.X_OK, err => {
+    fs.access(pathToScript, fs.constants.X_OK, err => {
       if (err) {
-        if (err.code === 'ENOENT') {
-          reject(
-            new ApplicationError(`Script "${pathToFile}" is not found.`, 500),
-          );
-        } else {
-          reject(err);
-        }
+        reject(
+          err.code === 'ENOENT'
+            ? new ApplicationError(
+                `Script "${pathToScript}" is not found.`,
+                500,
+              )
+            : err,
+        );
       } else {
-        resolve(pathToFile);
+        resolve();
       }
     });
   });
 }
 
+function getScriptNameFromRequestUrl(
+  requestUrl: string | undefined,
+): string | never {
+  if (!requestUrl) {
+    throw new ApplicationError('Request url is empty', 400);
+  }
+
+  const { pathname } = url.parse(requestUrl);
+
+  if (!pathname) {
+    throw new ApplicationError('Request url pathname is empty', 400);
+  }
+
+  // "/app-name" => "app-name.sh"
+  return pathname.slice(1) + '.sh';
+}
+
 const server = http.createServer(async (req, res) => {
   try {
-    if (!req.url) {
-      throw new ApplicationError('Request url is empty', 400);
-    }
+    const scriptName = getScriptNameFromRequestUrl(req.url);
+    const pathToScript = path.resolve(PATH_TO_SCRIPT_FOLDER, scriptName);
 
-    const { pathname } = url.parse(req.url);
+    await checkScriptExists(pathToScript);
 
-    if (!pathname) {
-      throw new ApplicationError('Request url pathname is empty', 400);
-    }
-
-    // "/app-name" => "app-name.sh"
-    const scriptName = pathname.slice(1) + '.sh';
-
-    const pathToScript = await checkScriptExists(scriptName);
     childProcess.execFile(pathToScript);
 
     res.statusCode = 200;
